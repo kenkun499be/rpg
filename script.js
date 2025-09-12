@@ -1,6 +1,13 @@
-
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+
+// canvas をウィンドウサイズに合わせる
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas(); // 最初に一度実行
 
 // プレイヤー情報
 let player = {
@@ -43,15 +50,5 @@ function draw() {
 
   requestAnimationFrame(draw);
 }
+
 draw();
-
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
