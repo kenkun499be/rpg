@@ -26,10 +26,10 @@ document.addEventListener("keyup", (e) => {
 
 function update() {
   // 押されているキーに応じて移動
-  if (keys["ArrowUp"])    player.y -= player.speed;
-  if (keys["ArrowDown"])  player.y += player.speed;
-  if (keys["ArrowLeft")  player.x -= player.speed;
-  if (keys["ArrowRight"]) player.x += player.speed;
+  if (keys["ArrowUp"] || keys["w"])    player.y -= player.speed;
+  if (keys["ArrowDown"] || keys["s"])  player.y += player.speed;
+  if (keys["ArrowLeft"] || keys["a"])  player.x -= player.speed;
+  if (keys["ArrowRight"] || keys["d"]) player.x += player.speed;
 }
 
 function draw() {
