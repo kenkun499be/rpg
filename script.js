@@ -1,31 +1,46 @@
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 // プレイヤー情報
 let player = {
-  x: 50,   // X座標
-  y: 50,   // Y座標
-  size: 32, // キャラの大きさ
-  color: "red" // 仮の色
+  x: 50,
+  y: 50,
+  size: 32,
+  color: "red",
+  speed: 3
 };
 
+// 押されているキーを記録するオブジェクト
+let keys = {};
+
+// キーが押されたら true
+document.addEventListener("keydown", (e) => {
+  keys[e.key] = true;
+});
+
+// キーが離されたら false
+document.addEventListener("keyup", (e) => {
+  keys[e.key] = false;
+});
+
+function update() {
+  // 押されているキーに応じて移動
+  if (keys["ArrowUp"])    player.y -= player.speed;
+  if (keys["ArrowDown"])  player.y += player.speed;
+  if (keys["ArrowLeft"])  player.x -= player.speed;
+  if (keys["ArrowRight"]) player.x += player.speed;
+}
 
 function draw() {
-  // 画面クリア
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // プレイヤー描画
+  // プレイヤーを描画
   ctx.fillStyle = player.color;
   ctx.fillRect(player.x, player.y, player.size, player.size);
+
+  update(); // 入力を反映
 
   requestAnimationFrame(draw);
 }
 draw();
-
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowUp")    player.y -= 5;
-  if (e.key === "ArrowDown")  player.y += 5;
-  if (e.key === "ArrowLeft")  player.x -= 5;
-  if (e.key === "ArrowRight") player.x += 5;
-});
