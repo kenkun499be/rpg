@@ -8,3 +8,16 @@ let player = {
   size: 32, // キャラの大きさ
   color: "red" // 仮の色
 };
+
+
+function draw() {
+  // 画面クリア
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // プレイヤー描画
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.size, player.size);
+
+  requestAnimationFrame(draw);
+}
+draw();
