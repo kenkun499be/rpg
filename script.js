@@ -21,3 +21,11 @@ function draw() {
   requestAnimationFrame(draw);
 }
 draw();
+
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowUp")    player.y -= 5;
+  if (e.key === "ArrowDown")  player.y += 5;
+  if (e.key === "ArrowLeft")  player.x -= 5;
+  if (e.key === "ArrowRight") player.x += 5;
+});
