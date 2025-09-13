@@ -3,12 +3,135 @@
 <head>
   <meta charset="UTF-8">
   <title>簡易RPG</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
 </head>
 <body>
-  <canvas id="game" ></canvas>
+  <canvas id="game"></canvas>
 
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
 
-  <script src="script.js"></script>
-  <link rel="stylesheet" href="style.css">
+    // canvas をウィンドウサイズに合わせる
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas(); // 最初に一度実行
+
+    // プレイヤー情報（ワールド座標）
+    let player = {
+      x: 50,
+      y: 50,
+      size: 32,
+      color: "red",
+      speed: 3
+    };
+
+    // カメラ情報
+    let camera = {
+      x: 0,
+      y: 0
+    };
+
+    // 押されているキーを記録するオブジェクト
+    let keys = {};
+
+    // キーが押されたら true
+    document.addEventListener("keydown", (e) => {
+      keys[e.key] = true;
+    });
+
+    // キーが離されたら false
+    document.addEventListener("keyup", (e) => {
+      keys[e.key] = false;
+    });
+
+    function update() {
+      // 押されているキーに応じて移動
+      if (keys["ArrowUp"] || keys["w"])    player.y -= player.speed;
+      if (keys["ArrowDown"] || keys["s"])  player.y += player.speed;
+      if (keys["ArrowLeft"] || keys["a"])  player.x -= player.speed;
+      if (keys["ArrowRight"] || keys["d"]) player.x += player.speed;
+
+      // カメラをプレイヤーの中心に追従させる
+      camera.x = player.x + player.size / 2 - canvas.width / 2;
+      camera.y = player.y + player.size / 2 - canvas.height / 2;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // カメラの変換を適用
+      ctx.save();
+      ctx.translate(-camera.x, -camera.y);
+
+      // 背景グリッドを描画（参考用）
+      drawGrid();
+
+      // プレイヤーを描画（ワールド座標）
+      ctx.fillStyle = player.color;
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+
+      // カメラの変換を元に戻す
+      ctx.restore();
+
+      // UI要素があればここに描画（スクリーン座標）
+      // 例: プレイヤーの座標表示
+      ctx.fillStyle = "black";
+      ctx.font = "16px Arial";
+      ctx.fillText(`Player: (${Math.round(player.x)}, ${Math.round(player.y)})`, 10, 30);
+      ctx.fillText(`Camera: (${Math.round(camera.x)}, ${Math.round(camera.y)})`, 10, 50);
+
+      update(); // 入力を反映
+
+      requestAnimationFrame(draw);
+    }
+
+    // 背景グリッドを描画（参考用）
+    function drawGrid() {
+      ctx.strokeStyle = "#ddd";
+      ctx.lineWidth = 1;
+      
+      const gridSize = 50;
+      const startX = Math.floor(camera.x / gridSize) * gridSize;
+      const startY = Math.floor(camera.y / gridSize) * gridSize;
+      const endX = camera.x + canvas.width;
+      const endY = camera.y + canvas.height;
+
+      // 縦線
+      for (let x = startX; x < endX + gridSize; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, camera.y);
+        ctx.lineTo(x, endY);
+        ctx.stroke();
+      }
+
+      // 横線
+      for (let y = startY; y < endY + gridSize; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(camera.x, y);
+        ctx.lineTo(endX, y);
+        ctx.stroke();
+      }
+    }
+
+    draw();
+  </script>
 </body>
 </html>
