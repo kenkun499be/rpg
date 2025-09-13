@@ -2,21 +2,10 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>簡易RPG</title>
+  <title>簡易RPG（完全同期カメラ）</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
-
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; }
   </style>
 </head>
 <body>
@@ -25,108 +14,171 @@
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
-
-    // canvas をウィンドウサイズに合わせる
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
+    function resizeCanvas(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener("resize", resizeCanvas);
-    resizeCanvas(); // 最初に一度実行
+    resizeCanvas();
 
-    // プレイヤー情報（ワールド座標）
-    let player = {
-      x: 50,
-      y: 50,
-      size: 32,
-      color: "red",
-      speed: 3
+    const TILE_SIZE = 32;
+    const MOVE_DURATION = 10; // 1マス移動のフレーム数
+
+    let player = { 
+      x: 5, y: 5, color: "red",
+      targetX: 5, targetY: 5,
+      moveProgress: 1
     };
 
-    // カメラ情報
-    let camera = {
-      x: 0,
-      y: 0
+    // カメラに「移動開始時の位置」と「ターゲット位置」を記録
+    let camera = { 
+      x: 0, y: 0,
+      startX: 0, startY: 0,
+      targetX: 0, targetY: 0
     };
 
-    // 押されているキーを記録するオブジェクト
+    let gameObjects = [
+      { x: 10, y: 3, color: "brown", type: "tree" },
+      { x: 8, y: 8, color: "blue", type: "water" },
+      { x: 12, y: 6, color: "gray", type: "rock" },
+      { x: 15, y: 10, color: "green", type: "bush" },
+      { x: 3, y: 12, color: "yellow", type: "treasure" },
+      { x: 20, y: 5, color: "purple", type: "crystal" },
+      { x: 0, y: 0, color: "orange", type: "spawn" },
+      { x: 25, y: 15, color: "pink", type: "flower" },
+      { x: 7, y: 7, color: "gray", type: "rock" },
+      { x: 9, y: 9, color: "gray", type: "rock" }
+    ];
+
     let keys = {};
-
-    // キーが押されたら true
     document.addEventListener("keydown", (e) => {
-      keys[e.key] = true;
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      keys[k] = true;
     });
-
-    // キーが離されたら false
     document.addEventListener("keyup", (e) => {
-      keys[e.key] = false;
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      keys[k] = false;
     });
 
-    function update() {
-      // 押されているキーに応じて移動
-      if (keys["ArrowUp"] || keys["w"])    player.y -= player.speed;
-      if (keys["ArrowDown"] || keys["s"])  player.y += player.speed;
-      if (keys["ArrowLeft"] || keys["a"])  player.x -= player.speed;
-      if (keys["ArrowRight"] || keys["d"]) player.x += player.speed;
+    function gridToPixel(gx, gy){ return { x: gx * TILE_SIZE, y: gy * TILE_SIZE }; }
+    function getObjectAt(x, y){ return gameObjects.find(o => o.x === x && o.y === y); }
 
-      // カメラをプレイヤーの中心に追従させる
-      camera.x = player.x + player.size / 2 - canvas.width / 2;
-      camera.y = player.y + player.size / 2 - canvas.height / 2;
+    function tryMove(dx, dy){
+      const targetX = player.x + dx;
+      const targetY = player.y + dy;
+      const obj = getObjectAt(targetX, targetY);
+      if (!obj || obj.type !== "rock") {
+        // プレイヤーのターゲット更新
+        player.targetX = targetX;
+        player.targetY = targetY;
+        player.moveProgress = 0;
+
+        // カメラの移動開始位置・ターゲット位置を記録
+        const startPos = getCameraPos(player.x, player.y);
+        const endPos = getCameraPos(player.targetX, player.targetY);
+        camera.startX = startPos.x;
+        camera.startY = startPos.y;
+        camera.targetX = endPos.x;
+        camera.targetY = endPos.y;
+
+        if (obj) handleObjectInteraction(obj);
+      }
     }
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function getCameraPos(px, py){
+      const pos = gridToPixel(px, py);
+      return {
+        x: pos.x + TILE_SIZE / 2 - canvas.width / 2,
+        y: pos.y + TILE_SIZE / 2 - canvas.height / 2
+      };
+    }
 
-      // カメラの変換を適用
+    function update(){
+      if (player.moveProgress < 1){
+        player.moveProgress += 1 / MOVE_DURATION;
+        if (player.moveProgress >= 1){
+          player.moveProgress = 1;
+          player.x = player.targetX;
+          player.y = player.targetY;
+        }
+      } else {
+        let dx = 0, dy = 0;
+        if (keys["ArrowUp"] || keys["w"]) dy--;
+        if (keys["ArrowDown"] || keys["s"]) dy++;
+        if (keys["ArrowLeft"] || keys["a"]) dx--;
+        if (keys["ArrowRight"] || keys["d"]) dx++;
+        if (dx !== 0 || dy !== 0) tryMove(dx, dy);
+      }
+
+      // カメラもプレイヤーと同じtで補間
+      const t = player.moveProgress;
+      camera.x = camera.startX + (camera.targetX - camera.startX) * t;
+      camera.y = camera.startY + (camera.targetY - camera.startY) * t;
+    }
+
+    function handleObjectInteraction(obj){
+      switch(obj.type){
+        case "treasure": console.log("宝箱を見つけた！"); break;
+        case "water": console.log("水に入った"); break;
+        case "flower": console.log("美しい花だ"); break;
+        case "crystal": console.log("魔法のクリスタルが光っている"); break;
+      }
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
       ctx.save();
       ctx.translate(-camera.x, -camera.y);
 
-      // 背景グリッドを描画（参考用）
       drawGrid();
 
-      // プレイヤーを描画（ワールド座標）
+      // オブジェクト描画
+      gameObjects.forEach(obj=>{
+        const p = gridToPixel(obj.x, obj.y);
+        ctx.fillStyle = obj.color;
+        ctx.fillRect(p.x, p.y, TILE_SIZE, TILE_SIZE);
+        ctx.strokeStyle = "black";
+        ctx.strokeRect(p.x, p.y, TILE_SIZE, TILE_SIZE);
+      });
+
+      // プレイヤー補間描画
+      const startPos = gridToPixel(player.x, player.y);
+      const endPos = gridToPixel(player.targetX, player.targetY);
+      const t = player.moveProgress;
+      const drawX = startPos.x + (endPos.x - startPos.x) * t;
+      const drawY = startPos.y + (endPos.y - startPos.y) * t;
+
       ctx.fillStyle = player.color;
-      ctx.fillRect(player.x, player.y, player.size, player.size);
+      ctx.fillRect(drawX, drawY, TILE_SIZE, TILE_SIZE);
+      ctx.strokeStyle = "black";
+      ctx.strokeRect(drawX, drawY, TILE_SIZE, TILE_SIZE);
 
-      // カメラの変換を元に戻す
       ctx.restore();
-
-      // UI要素があればここに描画（スクリーン座標）
-      // 例: プレイヤーの座標表示
       ctx.fillStyle = "black";
       ctx.font = "16px Arial";
-      ctx.fillText(`Player: (${Math.round(player.x)}, ${Math.round(player.y)})`, 10, 30);
-      ctx.fillText(`Camera: (${Math.round(camera.x)}, ${Math.round(camera.y)})`, 10, 50);
+      ctx.fillText(`座標: (${player.targetX}, ${player.targetY})`, 10, 30);
 
-      update(); // 入力を反映
-
+      update();
       requestAnimationFrame(draw);
     }
 
-    // 背景グリッドを描画（参考用）
-    function drawGrid() {
-      ctx.strokeStyle = "#ddd";
+    function drawGrid(){
+      ctx.strokeStyle = "#eee";
       ctx.lineWidth = 1;
-      
-      const gridSize = 50;
-      const startX = Math.floor(camera.x / gridSize) * gridSize;
-      const startY = Math.floor(camera.y / gridSize) * gridSize;
-      const endX = camera.x + canvas.width;
-      const endY = camera.y + canvas.height;
+      const startGridX = Math.floor(camera.x / TILE_SIZE);
+      const startGridY = Math.floor(camera.y / TILE_SIZE);
+      const endGridX = startGridX + Math.ceil(canvas.width / TILE_SIZE) + 1;
+      const endGridY = startGridY + Math.ceil(canvas.height / TILE_SIZE) + 1;
 
-      // 縦線
-      for (let x = startX; x < endX + gridSize; x += gridSize) {
+      for (let gx = startGridX; gx <= endGridX; gx++){
+        const px = gx * TILE_SIZE;
         ctx.beginPath();
-        ctx.moveTo(x, camera.y);
-        ctx.lineTo(x, endY);
+        ctx.moveTo(px, camera.y);
+        ctx.lineTo(px, camera.y + canvas.height);
         ctx.stroke();
       }
-
-      // 横線
-      for (let y = startY; y < endY + gridSize; y += gridSize) {
+      for (let gy = startGridY; gy <= endGridY; gy++){
+        const py = gy * TILE_SIZE;
         ctx.beginPath();
-        ctx.moveTo(camera.x, y);
-        ctx.lineTo(endX, y);
+        ctx.moveTo(camera.x, py);
+        ctx.lineTo(camera.x + canvas.width, py);
         ctx.stroke();
       }
     }
